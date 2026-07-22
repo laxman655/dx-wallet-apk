@@ -1,7 +1,7 @@
 // Dubai Exchange Cloud Store - All API functions use sessionStorage for tokens
 // NO localStorage usage - all auth data clears on tab close
 
-const API_BASE = "https://api.g00pay.com";
+const API_BASE = import.meta.env.VITE_API_URL || "https://api.g00pay.com";
 
 // ── Session Token (sessionStorage) ────────────────────────────
 const TK = "dx_session_token";
