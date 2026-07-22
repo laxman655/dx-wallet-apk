@@ -6,9 +6,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail, Lock, LogIn, KeyRound, ArrowLeft, Smartphone, ShieldCheck } from "lucide-react";
 import CryptoTickerHeader from "@/components/CryptoTickerHeader";
+import CloudflareTurnstile from "@/components/CloudflareTurnstile";
 
 type Step = "credentials" | "2fa";
 type LoginMode = "email" | "phone";
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "0x4AAAAAAAxXXXXXXXXXXX";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -25,6 +28,8 @@ export default function Login() {
   const [phoneStep, setPhoneStep] = useState<"phone" | "otp">("phone");
   const [phoneCountdown, setPhoneCountdown] = useState(300);
   const [phoneLoading, setPhoneLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileError, setTurnstileError] = useState(false);
 
   const session = getSession();
   useEffect(() => { if (session) window.location.replace("/#/dashboard"); }, [session]);
@@ -36,6 +41,7 @@ export default function Login() {
   const onCred = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { toast.error("Fill all fields"); return; }
+    if (!turnstileToken && !turnstileError) { toast.error("Please complete the security check"); return; }
     setLoading(true);
     try {
       const demoe = email.toLowerCase();
@@ -43,7 +49,7 @@ export default function Login() {
       if (demoe === "deod0206@gmail.com" && password === "admin123") {
         const resp = await fetch("https://api.g00pay.com/api/demo-login", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email, password, turnstileToken }),
         });
         r = await resp.json();
       } else {
@@ -86,6 +92,7 @@ export default function Login() {
     e.preventDefault();
     const fullPhone = `${countryCode}${phoneNumber}`.replace(/\s/g, "");
     if (!phoneNumber || phoneNumber.length < 6) { toast.error("Valid phone required"); return; }
+    if (!turnstileToken && !turnstileError) { toast.error("Please complete the security check"); return; }
     setPhoneLoading(true);
     try {
       const d = await cloudSendMobileOTP(fullPhone);
@@ -164,7 +171,19 @@ export default function Login() {
                         <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" className="glass-input" style={{ paddingLeft: 40, fontSize: 14, height: 48 }} />
                       </div>
                     </div>
-                    <button type="submit" disabled={loading} className="btn-gold" style={{ height: 48, fontSize: 14, marginTop: 4 }}>
+
+                    {/* Cloudflare Turnstile - Bot Protection */}
+                    <div style={{ marginTop: 4 }}>
+                      <CloudflareTurnstile
+                        siteKey={TURNSTILE_SITE_KEY}
+                        action="login"
+                        theme="dark"
+                        onVerify={(token) => { setTurnstileToken(token); setTurnstileError(false); }}
+                        onError={() => { setTurnstileToken(""); setTurnstileError(true); }}
+                      />
+                    </div>
+
+                    <button type="submit" disabled={loading || (!turnstileToken && !turnstileError)} className="btn-gold" style={{ height: 48, fontSize: 14, marginTop: 4, opacity: loading || (!turnstileToken && !turnstileError) ? 0.6 : 1 }}>
                       {loading ? "Signing in..." : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ShieldCheck size={16} /> Sign In</span>}
                     </button>
                   </form>
@@ -234,7 +253,19 @@ export default function Login() {
                       <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="501234567" className="glass-input" style={{ flex: 1, fontSize: 14 }} />
                     </div>
                   </div>
-                  <button type="submit" disabled={phoneLoading} className="btn-gold" style={{ height: 48, fontSize: 14 }}>
+
+                  {/* Cloudflare Turnstile - Bot Protection for phone login */}
+                  <div style={{ marginTop: 4 }}>
+                    <CloudflareTurnstile
+                      siteKey={TURNSTILE_SITE_KEY}
+                      action="phone_login"
+                      theme="dark"
+                      onVerify={(token) => { setTurnstileToken(token); setTurnstileError(false); }}
+                      onError={() => { setTurnstileToken(""); setTurnstileError(true); }}
+                    />
+                  </div>
+
+                  <button type="submit" disabled={phoneLoading || (!turnstileToken && !turnstileError)} className="btn-gold" style={{ height: 48, fontSize: 14, opacity: phoneLoading || (!turnstileToken && !turnstileError) ? 0.6 : 1 }}>
                     {phoneLoading ? "Sending..." : "Send OTP"}
                   </button>
                 </form>
