@@ -1,0 +1,1 @@
+/tmp/src_sections_Hero.tsx
