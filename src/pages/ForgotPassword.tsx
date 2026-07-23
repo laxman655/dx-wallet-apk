@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { cloudForgotPassword, cloudResetPassword, cloudResendOTP } from "@/lib/cloudStore";
+import { useNavigate } from "react-router";
+import { cloudForgotPassword, cloudResetPassword } from "@/lib/cloudStore";
 import { toast } from "sonner";
 import PageTransition from "@/components/animations/PageTransition";
 
 export default function ForgotPassword() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<"email" | "otp" | "newpw">("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -31,7 +33,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const r = await cloudResetPassword(email, otp, newPw);
-      if (r.success) { toast.success("Password reset!"); window.location.replace("/#/login"); }
+      if (r.success) { toast.success("Password reset!"); navigate("/login", { replace: true }); }
       else { toast.error(r.msg || "Failed"); }
     } catch { toast.error("Network error"); }
     finally { setLoading(false); }
