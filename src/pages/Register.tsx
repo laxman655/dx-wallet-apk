@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { cloudRegister, setSession, setToken } from "@/lib/cloudStore";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Mail, Lock, UserPlus, ArrowLeft, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import CryptoTickerHeader from "@/components/CryptoTickerHeader";
 
 export default function Register() {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -26,7 +27,7 @@ export default function Register() {
         setSession(r.user);
         if (r.token) setToken(r.token);
         toast.success("Account created!");
-        window.location.replace("/#/dashboard");
+        navigate("/dashboard", { replace: true });
       } else { toast.error(r.msg || "Registration failed"); }
     } catch { toast.error("Network error"); }
     finally { setLoading(false); }
