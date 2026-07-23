@@ -87,7 +87,6 @@ export default function CloudflareTurnstile({
   }, [loaded, siteKey, action, theme, onVerify, onError])
 
   if (error) {
-    // Silently fail - let the parent component handle it without blocking the user
     return (
       <div className="flex flex-col items-center gap-2 py-2">
         <div className="flex items-center gap-2 text-xs text-yellow-500/70">
