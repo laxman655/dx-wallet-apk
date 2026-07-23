@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { getSession, setSession, setToken, cloudVerifyLoginOTP, cloudLogin, cloudResendOTP, cloudSendMobileOTP, cloudVerifyMobileOTP } from "@/lib/cloudStore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ type LoginMode = "email" | "phone";
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "0x4AAAAAAAxXXXXXXXXXXX";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -32,7 +33,7 @@ export default function Login() {
   const [turnstileError, setTurnstileError] = useState(false);
 
   const session = getSession();
-  useEffect(() => { if (session) window.location.replace("/#/dashboard"); }, [session]);
+  useEffect(() => { if (session) navigate("/dashboard", { replace: true }); }, [session, navigate]);
   useEffect(() => { if (step !== "2fa" || countdown <= 0) return; const t = setInterval(() => setCountdown((c) => c - 1), 1000); return () => clearInterval(t); }, [step, countdown]);
   useEffect(() => { if (phoneStep !== "otp" || phoneCountdown <= 0) return; const t = setInterval(() => setPhoneCountdown((c) => c - 1), 1000); return () => clearInterval(t); }, [phoneStep, phoneCountdown]);
 
@@ -65,7 +66,7 @@ export default function Login() {
         if (r.token) setToken(r.token);
         toast.success(`Welcome, ${r.name || r.user?.name || 'User'}!`);
         const isAdminRole = role === "admin" || role === "superadmin";
-        window.location.replace(isAdminRole ? "/#/admin" : "/#/dashboard");
+        navigate(isAdminRole ? "/admin" : "/dashboard", { replace: true });
       } else { toast.error(r.msg || "Invalid email or password"); }
     } catch { toast.error("Network error"); }
     finally { setLoading(false); }
@@ -82,7 +83,7 @@ export default function Login() {
         setSession(r.user || { userId: r.userId, name: r.name, email, role });
         if (r.token) setToken(r.token);
         toast.success(`Welcome, ${r.name || 'User'}!`);
-        window.location.replace(role === "admin" || role === "superadmin" ? "/#/admin" : "/#/dashboard");
+        navigate(role === "admin" || role === "superadmin" ? "/admin" : "/dashboard", { replace: true });
       } else { toast.error(r.msg || "Invalid OTP"); }
     } catch { toast.error("Network error"); }
     finally { setLoading(false); }
@@ -113,7 +114,7 @@ export default function Login() {
         setSession(d.user || { userId: d.userId || 999, name: d.name || "Phone User", email: fullPhone, role: d.role || "user" });
         if (d.token) setToken(d.token);
         toast.success(`Welcome, ${d.name || 'User'}!`);
-        window.location.replace("/#/dashboard");
+        navigate("/dashboard", { replace: true });
       } else { toast.error(d.msg || "Invalid OTP"); }
     } catch { toast.error("Network error"); }
     finally { setPhoneLoading(false); }
@@ -171,8 +172,6 @@ export default function Login() {
                         <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" className="glass-input" style={{ paddingLeft: 40, fontSize: 14, height: 48 }} />
                       </div>
                     </div>
-
-                    {/* Cloudflare Turnstile - Bot Protection */}
                     <div style={{ marginTop: 4 }}>
                       <CloudflareTurnstile
                         siteKey={TURNSTILE_SITE_KEY}
@@ -182,7 +181,6 @@ export default function Login() {
                         onError={() => { setTurnstileToken(""); setTurnstileError(true); }}
                       />
                     </div>
-
                     <button type="submit" disabled={loading || (!turnstileToken && !turnstileError)} className="btn-gold" style={{ height: 48, fontSize: 14, marginTop: 4, opacity: loading || (!turnstileToken && !turnstileError) ? 0.6 : 1 }}>
                       {loading ? "Signing in..." : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ShieldCheck size={16} /> Sign In</span>}
                     </button>
@@ -253,8 +251,6 @@ export default function Login() {
                       <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="501234567" className="glass-input" style={{ flex: 1, fontSize: 14 }} />
                     </div>
                   </div>
-
-                  {/* Cloudflare Turnstile - Bot Protection for phone login */}
                   <div style={{ marginTop: 4 }}>
                     <CloudflareTurnstile
                       siteKey={TURNSTILE_SITE_KEY}
@@ -264,7 +260,6 @@ export default function Login() {
                       onError={() => { setTurnstileToken(""); setTurnstileError(true); }}
                     />
                   </div>
-
                   <button type="submit" disabled={phoneLoading || (!turnstileToken && !turnstileError)} className="btn-gold" style={{ height: 48, fontSize: 14, opacity: phoneLoading || (!turnstileToken && !turnstileError) ? 0.6 : 1 }}>
                     {phoneLoading ? "Sending..." : "Send OTP"}
                   </button>
