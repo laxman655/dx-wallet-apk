@@ -4,7 +4,7 @@ import { getSession, setSession, setToken, cloudVerifyLoginOTP, cloudLogin, clou
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Mail, Lock, LogIn, KeyRound, ArrowLeft, Smartphone, ShieldCheck } from "lucide-react";
+import { Mail, Lock, LogIn, KeyRound, ArrowLeft, Smartphone, ShieldCheck, Eye } from "lucide-react";
 import CryptoTickerHeader from "@/components/CryptoTickerHeader";
 import CloudflareTurnstile from "@/components/CloudflareTurnstile";
 
@@ -31,6 +31,8 @@ export default function Login() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState(false);
+  // Display OTP on screen when email service is not configured
+  const [displayOtp, setDisplayOtp] = useState("");
 
   const session = getSession();
   useEffect(() => { if (session) navigate("/dashboard", { replace: true }); }, [session, navigate]);
@@ -59,7 +61,13 @@ export default function Login() {
       if (r.requires2FA || r.requires_otp) {
         setPendingId(r.userId || r.user?.id);
         setStep("2fa"); setCountdown(300);
-        toast.success("OTP sent to your email! Check inbox.");
+        // If API returns OTP directly (for debugging/testing), display it
+        if (r.otp) {
+          setDisplayOtp(r.otp);
+          toast.success("Your OTP is displayed below!");
+        } else {
+          toast.success("OTP sent! Check your email or use Resend OTP.");
+        }
       } else if (r.success) {
         const role = r.user?.role || r.role || "user";
         setSession(r.user || { userId: r.userId, name: r.name, email, role });
@@ -85,6 +93,26 @@ export default function Login() {
         toast.success(`Welcome, ${r.name || 'User'}!`);
         navigate(role === "admin" || role === "superadmin" ? "/admin" : "/dashboard", { replace: true });
       } else { toast.error(r.msg || "Invalid OTP"); }
+    } catch { toast.error("Network error"); }
+    finally { setLoading(false); }
+  };
+
+  const onResendOtp = async () => {
+    setLoading(true);
+    try {
+      const d = await cloudResendOTP(email);
+      if (d.success) {
+        setCountdown(300);
+        // If API returns OTP directly, display it on screen
+        if (d.otp) {
+          setDisplayOtp(d.otp);
+          toast.success("New OTP displayed below!");
+        } else {
+          toast.success("OTP resent! Check your email.");
+        }
+      } else {
+        toast.error(d.msg || "Failed to resend OTP");
+      }
     } catch { toast.error("Network error"); }
     finally { setLoading(false); }
   };
@@ -201,11 +229,30 @@ export default function Login() {
                   </Link>
                     <h2 style={{ color: "#fff", fontSize: 17, fontWeight: 700 }}>2FA Verification</h2>
                   </div>
-                  <div style={{ background: "rgba(200,168,34,0.05)", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1px solid rgba(200,168,34,0.12)", textAlign: "center" }}>
-                    <p style={{ color: "#c8a822", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase" }}>Check Your Email</p>
-                    <p style={{ color: "#fff", fontSize: 13, fontWeight: 600, marginTop: 6 }}>{email}</p>
-                    <p style={{ color: "#444", fontSize: 10, marginTop: 4 }}>Check spam folder if not received</p>
-                  </div>
+
+                  {/* OTP Display Banner - shows OTP directly on screen */}
+                  {displayOtp && (
+                    <div style={{ background: "linear-gradient(135deg, rgba(0,230,118,0.1), rgba(0,200,83,0.05))", borderRadius: 16, padding: "20px", marginBottom: 16, border: "2px solid rgba(0,230,118,0.3)", textAlign: "center", animation: "pulse 2s infinite" }}>
+                      <p style={{ color: "#00e676", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>
+                        <Eye size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                        Your OTP Code
+                      </p>
+                      <p style={{ color: "#00e676", fontSize: 36, fontWeight: 900, letterSpacing: 8, margin: 0, fontFamily: "Courier New, monospace", textShadow: "0 0 20px rgba(0,230,118,0.3)" }}>
+                        {displayOtp}
+                      </p>
+                      <p style={{ color: "#888", fontSize: 10, marginTop: 8 }}>Enter this code below to login</p>
+                    </div>
+                  )}
+
+                  {/* Email notification (when email is configured) */}
+                  {!displayOtp && (
+                    <div style={{ background: "rgba(200,168,34,0.05)", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1px solid rgba(200,168,34,0.12)", textAlign: "center" }}>
+                      <p style={{ color: "#c8a822", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase" }}>Check Your Email</p>
+                      <p style={{ color: "#fff", fontSize: 13, fontWeight: 600, marginTop: 6 }}>{email}</p>
+                      <p style={{ color: "#444", fontSize: 10, marginTop: 4 }}>Check spam folder if not received</p>
+                    </div>
+                  )}
+
                   <form onSubmit={on2FA} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <div>
                       <Label style={{ color: "#666", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" }}>Verification Code</Label>
@@ -221,11 +268,18 @@ export default function Login() {
                       {countdown > 0 ? (
                         <p style={{ color: "#444", fontSize: 10, textAlign: "center", width: "100%", letterSpacing: 1 }}>Resend in {fmt(countdown)}</p>
                       ) : (
-                        <button type="button" onClick={async () => { setLoading(true); try { const d = await cloudResendOTP(email); if (d.success) { setCountdown(300); toast.success("OTP resent!"); } else toast.error(d.msg || "Failed"); } catch { toast.error("Network error"); } setLoading(false); }} className="btn-outline-gold" style={{ flex: 1, padding: "10px", fontSize: 11 }}>Resend OTP</button>
+                        <button type="button" onClick={onResendOtp} className="btn-outline-gold" style={{ flex: 1, padding: "10px", fontSize: 11 }}>Resend OTP</button>
                       )}
-                      <button type="button" onClick={() => setStep("credentials")} style={{ background: "transparent", border: "none", color: "#555", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: "10px" }}><ArrowLeft size={12} />Back</button>
+                      <button type="button" onClick={() => { setStep("credentials"); setDisplayOtp(""); }} style={{ background: "transparent", border: "none", color: "#555", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: "10px" }}><ArrowLeft size={12} />Back</button>
                     </div>
                   </form>
+
+                  <style>{\`
+                    @keyframes pulse {
+                      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.2); }
+                      50% { box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); }
+                    }
+                  \`}</style>
                 </div>
               )}
             </>
