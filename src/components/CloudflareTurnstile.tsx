@@ -20,7 +20,7 @@ declare global {
 }
 
 export default function CloudflareTurnstile({
-  siteKey = "0x4AAAAAAAxXXXXXXXXXXX", // Replace with your actual site key
+  siteKey = "0x4AAAAAAAxXXXXXXXXXXX",
   onVerify,
   onError,
   action = "login",
@@ -32,18 +32,15 @@ export default function CloudflareTurnstile({
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    // Check if Turnstile script is already loaded
     if (window.turnstile) {
       setLoaded(true)
       return
     }
 
-    // Define global callback
     window.onloadTurnstileCallback = () => {
       setLoaded(true)
     }
 
-    // Load Turnstile script
     const script = document.createElement("script")
     script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit"
     script.async = true
@@ -64,7 +61,6 @@ export default function CloudflareTurnstile({
   useEffect(() => {
     if (!loaded || !containerRef.current || !window.turnstile) return
 
-    // Render Turnstile widget
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
       action,
@@ -77,7 +73,6 @@ export default function CloudflareTurnstile({
         onError?.()
       },
       "expired-callback": () => {
-        // Token expired, reset widget
         if (widgetIdRef.current && window.turnstile) {
           window.turnstile.reset(widgetIdRef.current)
         }
@@ -92,9 +87,15 @@ export default function CloudflareTurnstile({
   }, [loaded, siteKey, action, theme, onVerify, onError])
 
   if (error) {
+    // Silently fail - let the parent component handle it without blocking the user
     return (
-      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
-        Security check failed to load. Please refresh the page or try again later.
+      <div className="flex flex-col items-center gap-2 py-2">
+        <div className="flex items-center gap-2 text-xs text-yellow-500/70">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span>Security check unavailable - you can still proceed</span>
+        </div>
       </div>
     )
   }
