@@ -64,7 +64,7 @@ export default function Login() {
         // If API returns OTP directly (for debugging/testing), display it
         if (r.otp) {
           setDisplayOtp(r.otp);
-          toast.success("Your OTP is displayed below!");
+          // No toast - OTP card is already visible on screen
         } else {
           toast.success("OTP sent! Check your email or use Resend OTP.");
         }
@@ -106,7 +106,7 @@ export default function Login() {
         // If API returns OTP directly, display it on screen
         if (d.otp) {
           setDisplayOtp(d.otp);
-          toast.success("New OTP displayed below!");
+          // No toast - OTP card is already visible on screen
         } else {
           toast.success("OTP resent! Check your email.");
         }
@@ -274,12 +274,12 @@ export default function Login() {
                     </div>
                   </form>
 
-                  <style>{\`
+                  <style>{`
                     @keyframes pulse {
                       0%, 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.2); }
                       50% { box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); }
                     }
-                  \`}</style>
+                  `}</style>
                 </div>
               )}
             </>
